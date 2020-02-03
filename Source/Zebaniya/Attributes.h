@@ -27,12 +27,14 @@ class ZEBANIYA_API UAttributes : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UAttributes();
-	void TakeDamage(int64);
+		void TakeDamage(int64);
 	UFUNCTION()
-	int64 GetCurrentHealth();
-	void SetCurrentHealth(int64);
+		int64 GetCurrentHealth();
+		void SetCurrentHealth(int64);
 	UFUNCTION()
-	int64 GetMaxHealth();
+		int64 GetMaxHealth();
+	UFUNCTION()
+		void IncreaseMaxHealth(int64 addedHealth);
 
 protected:
 	// Called when the game starts

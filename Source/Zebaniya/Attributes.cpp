@@ -16,7 +16,7 @@ UAttributes::UAttributes()
 void UAttributes::TakeDamage(int64 damage)
 {
 	TimeWhenDamageTaken = GetWorld()->GetTimeSeconds();
-	currentHealth -= damage;
+	SetCurrentHealth(currentHealth - damage);
 	if (currentHealth < 0)
 	{
 		currentHealth = 0;
@@ -35,17 +35,33 @@ int64 UAttributes::GetCurrentHealth()
 	return currentHealth;
 }
 
-void UAttributes::SetCurrentHealth(int64 cH)
+void UAttributes::SetCurrentHealth(int64 newHealthValue)
 {
-	if (currentHealth > maxHealth)
+	if (newHealthValue > maxHealth)
 	{
-		currentHealth = maxHealth;
+		newHealthValue = maxHealth;
 	}
-	else if (currentHealth < 0)
+	else if (newHealthValue < 0)
 	{
 		return;
 	}
-	currentHealth = cH;
+
+	//Enable and Disable Timer Tick for optimization
+	if (newHealthValue < maxHealth)
+	{
+		PrimaryComponentTick.bCanEverTick = true;
+	}
+	else if (newHealthValue >= maxHealth)
+	{
+		PrimaryComponentTick.bCanEverTick = false;
+	}
+	currentHealth = newHealthValue;
+}
+
+void UAttributes::IncreaseMaxHealth(int64 addedHealth)
+{
+	maxHealth += addedHealth;
+	SetCurrentHealth(maxHealth);
 }
 
 // Called when the game starts
@@ -61,7 +77,7 @@ void UAttributes::BeginPlay()
 
 void UAttributes::Regen()
 {
-	if (currentHealth != maxHealth)
+	if (currentHealth < maxHealth)
 	{
 		if (GetWorld()->GetTimeSeconds() >= (TimeWhenDamageTaken + regenTime))
 		{
