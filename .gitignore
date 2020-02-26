@@ -1,5 +1,7 @@
 # Visual Studio 2015 user specific files
 .vs/
+# Test Map
+Content/ThirdPersonCPP/Maps
 
 # Compiled Object files
 *.slo
