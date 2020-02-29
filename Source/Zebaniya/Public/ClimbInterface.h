@@ -27,4 +27,5 @@ class ZEBANIYA_API IClimbInterface
 public:
 
 	void GrabLedge(bool bCanLedgeGrap);
+	void ClimbUp();
 };

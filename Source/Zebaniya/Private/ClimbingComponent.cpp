@@ -48,7 +48,7 @@ void UClimbingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	if (!Owner) { return; }
-	if (bIsClimbingLedge && bCanTrace && Owner->GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Falling)
+	if (bCanTrace && Owner->GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Falling && (LetGoOfActor == nullptr || LetGoOfActor != ForwardTraceResult.Actor.Get()))
 	{
 		if (!ForwardSphereTrace()) { return; }
 		if (!TopSphereTrace()) {return; }
@@ -61,15 +61,14 @@ void UClimbingComponent::Rest()
 	auto HeadLocation{ Owner->GetMesh()->GetBoneLocation("head") };
 	auto JumpDistance{ DownwardTraceResult.ImpactPoint.Z - HeadLocation.Z };
 
-	if (JumpDistance > 0.0f && JumpDistance < 80.0f)
+	if (JumpDistance > 0.0f && JumpDistance < 60.0f)
 	{
 		auto StartVerticleNormal{ ForwardTraceResult.ImpactNormal };
 		auto LedgeHight{ DownwardTraceResult.ImpactPoint };
 		if (ClimbingInputController) {
-			//ClimbingInputController->Priority = 100;
 			ClimbingInputController->bBlockInput = true;
 		}
-		bIsClimbingLedge = false;
+		bIsClimbingLedge = true;
 		if (!Animation) { return; }
 		Animation->GrabLedge(true);
 		Owner->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
@@ -96,6 +95,17 @@ void UClimbingComponent::Rest()
 	}
 }
 
+void UClimbingComponent::FinishClimbInteractions()
+{
+	if (!Owner) { return; }
+	Animation->GrabLedge(false);
+	bIsHanging = false;
+	bIsClimbingLedge = false;
+	if (ClimbingInputController) {
+		ClimbingInputController->bBlockInput = false;
+	}
+}
+
 bool UClimbingComponent::TopSphereTrace() {
 	auto StartVerticle{ ForwardTraceResult.ImpactPoint };
 	StartVerticle.Z += HeightTrace;
@@ -116,8 +126,7 @@ UInputComponent* UClimbingComponent::SetUpClimbingControllerForPlayer()
 	if (!Owner) { return nullptr;}
 	static const FName InputComponentName(TEXT("PawnInputComponent1"));
 	ClimbingInputController = NewObject<UInputComponent>(Owner, InputComponentName);
-	//ClimbingInputController->bBlockInput = false;
-	ClimbingInputController->Priority = 1;
+	ClimbingInputController->Priority = 10;
 	ClimbingInputController->BindAction("CrouchAndLetGo", EInputEvent::IE_Released, this, &UClimbingComponent::LetGoOfLedge);
 	ClimbingInputController->BindAction("Jump", EInputEvent::IE_Pressed, this, &UClimbingComponent::EnableLedgeGrabing);
 	return ClimbingInputController;
@@ -133,27 +142,43 @@ void UClimbingComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActo
 {
 	bIsClimbingLedge = false;
 	bCanTrace = false;
+	ForwardTraceResult = FHitResult{};
+	DownwardTraceResult = FHitResult{};
+	LetGoOfActor = nullptr; 
 }
 
 void UClimbingComponent::LetGoOfLedge()
 {
-	if (!Owner) { return; }
 	if (bIsHanging)
 	{
-		Owner->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-		Animation->GrabLedge(false);
-		bIsHanging = false;
-		bIsClimbingLedge = false;
-		if (ClimbingInputController) {
-			//ClimbingInputController->Priority = -100;
-			ClimbingInputController->bBlockInput = false;
-		}
+		LetGoOfActor = DownwardTraceResult.Actor.Get();
+		FinishClimbInteractions();
+		Owner->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Falling);
 	}
 }
 
 void UClimbingComponent::EnableLedgeGrabing()
 {
-	if(!Owner) { return; }
-	Owner->Jump();
-	bIsClimbingLedge = true;
+	if (!bIsClimbingLedge) {
+		if(!Owner) { return; }
+		Owner->Jump();
+		if(bCanTrace) { LetGoOfActor = nullptr;}
+	}
+	else {
+		Animation->ClimbUp();
+	}
+}
+
+void UClimbingComponent::ClimbUp()
+{
+	if (bIsHanging)
+	{
+		Animation->ClimbUp();
+	}
+}
+
+void UClimbingComponent::FinishClimbUP()
+{
+	FinishClimbInteractions();
+	Owner->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 }

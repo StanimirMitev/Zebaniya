@@ -35,19 +35,23 @@ public:
 
 	void LetGoOfLedge();
 	void EnableLedgeGrabing();
+	void ClimbUp();
+	void FinishClimbUP();
 
 private:
 	bool ForwardSphereTrace();
 	bool TopSphereTrace();
+	//TODO Raname to somehing more sensible
 	void Rest();
-	class UInputComponent* SetUpClimbingControllerForPlayer();
-
+	void FinishClimbInteractions();
 
 	bool bCanTrace;
 	bool bIsClimbingLedge;
 	bool bIsHanging;
+	class UInputComponent* SetUpClimbingControllerForPlayer();
 	FHitResult ForwardTraceResult;
 	FHitResult DownwardTraceResult;
+	AActor* LetGoOfActor;
 	ACharacter* Owner;
 	UClimbAnimInstance* Animation;
 	UInputComponent* ClimbingInputController;
