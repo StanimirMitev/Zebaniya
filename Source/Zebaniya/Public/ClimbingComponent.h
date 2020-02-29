@@ -34,15 +34,20 @@ public:
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	void LetGoOfLedge();
-	void GrabLedge(bool bCanLedgeGrap);
+	void EnableLedgeGrabing();
 
 private:
-	void ForwardSphereTrace();
+	bool ForwardSphereTrace();
+	bool TopSphereTrace();
+	void Rest();
 	class UInputComponent* SetUpClimbingControllerForPlayer();
+
 
 	bool bCanTrace;
 	bool bIsClimbingLedge;
 	bool bIsHanging;
+	FHitResult ForwardTraceResult;
+	FHitResult DownwardTraceResult;
 	ACharacter* Owner;
 	UClimbAnimInstance* Animation;
 	UInputComponent* ClimbingInputController;

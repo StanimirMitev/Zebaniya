@@ -79,7 +79,6 @@ void AZebaniyaCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AZebaniyaCharacter::OnResetVR);
 
-	//Setup Climbing Imput Bindings
 }
 
 void AZebaniyaCharacter::OnResetVR()
