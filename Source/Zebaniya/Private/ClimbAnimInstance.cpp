@@ -42,3 +42,40 @@ void UClimbAnimInstance::FinishClimbing()
 	Climb->FinishClimbUP();
 }
 
+void UClimbAnimInstance::SetIsMovingLeft(const bool bIsLeft)
+{
+	bIsMovingLeft = bIsLeft;
+}
+
+bool UClimbAnimInstance::GetIsMovingLeft() const
+{
+	return bIsMovingLeft;
+}
+
+void UClimbAnimInstance::SetIsMovingRight(const bool bIsRight)
+{
+	bIsMovingRight = bIsRight;
+}
+
+bool UClimbAnimInstance::GetIsMovingRight() const
+{
+	return bIsMovingRight; 
+}
+
+void UClimbAnimInstance::ClimbRight_Implementation()
+{
+	SetIsMovingRight(true);
+	SetIsMovingLeft(false);
+}
+
+void UClimbAnimInstance::ClimbLeft_Implementation()
+{
+	SetIsMovingLeft(true);
+	SetIsMovingRight(false);
+}
+
+void UClimbAnimInstance::FinishMoving()
+{
+	SetIsMovingLeft(false);
+	SetIsMovingRight(false);
+}

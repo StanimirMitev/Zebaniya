@@ -18,11 +18,12 @@ UClimbingComponent::UClimbingComponent() : bCanTrace{false}, bIsClimbingLedge {f
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-	this->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	this->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel12, ECollisionResponse::ECR_Block);
-	this->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Overlap);
-	this->OnComponentBeginOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapBegin);
-	this->OnComponentEndOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapEnd);
+	SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel12, ECollisionResponse::ECR_Block);
+	SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Overlap);
+	OnComponentBeginOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapBegin);
+	OnComponentEndOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapEnd);
+
 	// ...
 }
 
@@ -38,6 +39,17 @@ void UClimbingComponent::BeginPlay()
 		if (GetWorld()->GetFirstPlayerController() == Owner->Controller) {
 			GetWorld()->GetFirstPlayerController()->PushInputComponent(SetUpClimbingControllerForPlayer());
 		}
+		auto HeadLocation{ Owner->GetMesh()->GetBoneLocation("head") };
+
+		LeftSphere = NewObject<USphereComponent>(Owner, TEXT("ClimbLeft"));
+		LeftSphere->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules{EAttachmentRule::KeepRelative, false});
+		LeftSphere->SetSphereRadius(20.0f, false);
+		LeftSphere->AddLocalOffset(FVector{ 45,-70,90.f});
+		RightSphere = NewObject<USphereComponent>(Owner, TEXT("RightLeft"));
+		RightSphere->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules{ EAttachmentRule::KeepRelative, false });
+		RightSphere->SetSphereRadius(20.0f, false);
+		RightSphere->AddLocalOffset(FVector{ 45,70,90.f });
+
 	}
 }
 
@@ -46,7 +58,8 @@ void UClimbingComponent::BeginPlay()
 void UClimbingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
+	/*UE_LOG(LogTemp, Warning, TEXT("LSW: %s"), *LeftSphere->GetComponentLocation().ToString())
+	UE_LOG(LogTemp, Warning, TEXT("RSW: %s"), *RightSphere->GetComponentLocation().ToString())*/
 	if (!Owner) { return; }
 	if (bCanTrace && Owner->GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Falling && (LetGoOfActor == nullptr || LetGoOfActor != ForwardTraceResult.Actor.Get()))
 	{
@@ -129,6 +142,8 @@ UInputComponent* UClimbingComponent::SetUpClimbingControllerForPlayer()
 	ClimbingInputController->Priority = 10;
 	ClimbingInputController->BindAction("CrouchAndLetGo", EInputEvent::IE_Released, this, &UClimbingComponent::LetGoOfLedge);
 	ClimbingInputController->BindAction("Jump", EInputEvent::IE_Pressed, this, &UClimbingComponent::EnableLedgeGrabing);
+	ClimbingInputController->BindAction("ClimbLeft", EInputEvent::IE_Pressed, this, &UClimbingComponent::ClimbLeft);
+	ClimbingInputController->BindAction("ClimbRight", EInputEvent::IE_Pressed, this, &UClimbingComponent::ClimbRight);
 	return ClimbingInputController;
 	
 }
@@ -181,4 +196,20 @@ void UClimbingComponent::FinishClimbUP()
 {
 	FinishClimbInteractions();
 	Owner->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+}
+
+void UClimbingComponent::ClimbLeft()
+{
+	if (bIsHanging && Animation)
+	{
+		Animation->ClimbLeft();
+	}
+}
+
+void UClimbingComponent::ClimbRight()
+{
+	if (bIsHanging && Animation)
+	{
+		Animation->ClimbRight();
+	}
 }

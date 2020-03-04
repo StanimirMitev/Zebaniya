@@ -24,18 +24,39 @@ class ZEBANIYA_API UClimbAnimInstance : public UAnimInstance, public IClimbInter
 	void SetIsClimbingUP(const bool bIsClimbing);
 	UFUNCTION(Category = Climb)
 	bool GetIsClimbingUP() const;
+	UFUNCTION(Category = Climb)
+	void SetIsMovingLeft(const bool bIsClimbing);
+	UFUNCTION(Category = Climb)
+	bool GetIsMovingLeft() const;
+	UFUNCTION(Category = Climb)
+	void SetIsMovingRight(const bool bIsClimbing);
+	UFUNCTION(Category = Climb)
+	bool GetIsMovingRight() const;
 
 	void GrabLedge(bool bCanLedgeGrap);
 	
 	UFUNCTION(Category = "Climb", BlueprintNativeEvent, BlueprintCallable)
 	void ClimbUp();
 	virtual void ClimbUp_Implementation();
+	UFUNCTION(Category = "Climb", BlueprintNativeEvent, BlueprintCallable)
+	void ClimbRight();
+	virtual void ClimbRight_Implementation();
+	UFUNCTION(Category = "Climb", BlueprintNativeEvent, BlueprintCallable)
+	void ClimbLeft();
+	virtual void ClimbLeft_Implementation();
 
 	UFUNCTION(Category = "Climb", BlueprintCallable)
 	void FinishClimbing();
+	UFUNCTION(Category = "Climb", BlueprintCallable)
+	void FinishMoving();
+
 	protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Climb)
 	bool bCanGrabLedge;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Climb)
 	bool bIsClimbingUp;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Climb)
+	bool bIsMovingRight;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Climb)
+	bool bIsMovingLeft;
 };

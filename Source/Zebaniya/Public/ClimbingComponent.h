@@ -37,6 +37,8 @@ public:
 	void EnableLedgeGrabing();
 	void ClimbUp();
 	void FinishClimbUP();
+	void ClimbLeft();
+	void ClimbRight();
 
 private:
 	bool ForwardSphereTrace();
@@ -55,6 +57,8 @@ private:
 	ACharacter* Owner;
 	UClimbAnimInstance* Animation;
 	UInputComponent* ClimbingInputController;
+	USphereComponent* LeftSphere;
+	USphereComponent* RightSphere;
 
 	UPROPERTY(EditAnywhere)
 	float ForwardTraceDistance = 100.0f;

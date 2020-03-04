@@ -28,4 +28,6 @@ public:
 
 	void GrabLedge(bool bCanLedgeGrap);
 	void ClimbUp();
+	void ClimbRight();
+	void ClimbLeft();
 };
