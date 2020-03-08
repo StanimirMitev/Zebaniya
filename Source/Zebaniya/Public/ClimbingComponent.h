@@ -29,10 +29,16 @@ public:
 
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
 	UFUNCTION()
 	void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
+	UFUNCTION()
+	void OnOverlapBeginLeft(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void OnOverlapBeginRight(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void OnOverlapEndLeft(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	UFUNCTION()
+	void OnOverlapEndRight(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	void LetGoOfLedge();
 	void EnableLedgeGrabing();
 	void ClimbUp();
@@ -46,10 +52,13 @@ private:
 	//TODO Raname to somehing more sensible
 	void Rest();
 	void FinishClimbInteractions();
-
+	void SetUpSideClimbingMovementDetection(USphereComponent*& Sphere, FVector LocalOffset, const FName Name);
+	
 	bool bCanTrace;
 	bool bIsClimbingLedge;
 	bool bIsHanging;
+	bool bCanMoveLeft;
+	bool bCanMoveRight;
 	class UInputComponent* SetUpClimbingControllerForPlayer();
 	FHitResult ForwardTraceResult;
 	FHitResult DownwardTraceResult;
@@ -68,4 +77,7 @@ private:
 	float HeightTrace = 200.0f;
 	UPROPERTY(EditAnywhere)
 	float HeightOffset = 100.0f;
+	UPROPERTY(EditAnywhere)
+	float SideSphereRadius = 20.0f;
+	
 };

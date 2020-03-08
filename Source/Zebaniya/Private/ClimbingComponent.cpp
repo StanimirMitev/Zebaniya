@@ -5,6 +5,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
+//#include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/Classes/Kismet/KismetSystemLibrary.h"
 #include "GameFramework/PlayerController.h"
@@ -13,17 +14,18 @@
 #include "GameFramework/Character.h"
 
 // Sets default values for this component's properties
-UClimbingComponent::UClimbingComponent() : bCanTrace{false}, bIsClimbingLedge {false}, ForwardTraceResult {}, DownwardTraceResult {}, bIsHanging {false}
+UClimbingComponent::UClimbingComponent() : bCanTrace{false}, bIsClimbingLedge {false}, ForwardTraceResult {}, DownwardTraceResult {}, bIsHanging {false}, bCanMoveLeft {false}, bCanMoveRight {false}
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
+	SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel1);
 	SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel12, ECollisionResponse::ECR_Block);
 	SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Overlap);
 	OnComponentBeginOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapBegin);
 	OnComponentEndOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapEnd);
-
+	
 	// ...
 }
 
@@ -39,27 +41,36 @@ void UClimbingComponent::BeginPlay()
 		if (GetWorld()->GetFirstPlayerController() == Owner->Controller) {
 			GetWorld()->GetFirstPlayerController()->PushInputComponent(SetUpClimbingControllerForPlayer());
 		}
-		auto HeadLocation{ Owner->GetMesh()->GetBoneLocation("head") };
-
-		LeftSphere = NewObject<USphereComponent>(Owner, TEXT("ClimbLeft"));
-		LeftSphere->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules{EAttachmentRule::KeepRelative, false});
-		LeftSphere->SetSphereRadius(20.0f, false);
-		LeftSphere->AddLocalOffset(FVector{ 45,-70,90.f});
-		RightSphere = NewObject<USphereComponent>(Owner, TEXT("RightLeft"));
-		RightSphere->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules{ EAttachmentRule::KeepRelative, false });
-		RightSphere->SetSphereRadius(20.0f, false);
-		RightSphere->AddLocalOffset(FVector{ 45,70,90.f });
-
+		SetUpSideClimbingMovementDetection(LeftSphere, FVector{ 45,-60,90.f }, TEXT("ClimbLeftDetection"));
+		SetUpSideClimbingMovementDetection(RightSphere, FVector{ 45,60,90.f }, TEXT("ClimbRightDetection"));
+		LeftSphere->OnComponentBeginOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapBeginLeft);
+		LeftSphere->OnComponentEndOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapEndLeft);
+		RightSphere->OnComponentBeginOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapBeginRight);
+		RightSphere->OnComponentEndOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapEndRight);
 	}
 }
 
+void UClimbingComponent::SetUpSideClimbingMovementDetection(USphereComponent*& Sphere, FVector LocalOffset, const FName Name)
+{
+	Sphere = NewObject<USphereComponent>(Owner, Name);
+	Sphere->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules{ EAttachmentRule::KeepRelative, false });
+	Sphere->RegisterComponent();
+	Sphere->SetSphereRadius(SideSphereRadius, false);
+	Sphere->AddLocalOffset(LocalOffset);
+	Sphere->SetGenerateOverlapEvents(true);
+	Sphere->SetCollisionProfileName(TEXT("Custom"));
+	Sphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Sphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel1);
+	Sphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	Sphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel12, ECollisionResponse::ECR_Block);
+	Sphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Overlap);
+}
 
 // Called every frame
 void UClimbingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	/*UE_LOG(LogTemp, Warning, TEXT("LSW: %s"), *LeftSphere->GetComponentLocation().ToString())
-	UE_LOG(LogTemp, Warning, TEXT("RSW: %s"), *RightSphere->GetComponentLocation().ToString())*/
+
 	if (!Owner) { return; }
 	if (bCanTrace && Owner->GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Falling && (LetGoOfActor == nullptr || LetGoOfActor != ForwardTraceResult.Actor.Get()))
 	{
@@ -74,7 +85,7 @@ void UClimbingComponent::Rest()
 	auto HeadLocation{ Owner->GetMesh()->GetBoneLocation("head") };
 	auto JumpDistance{ DownwardTraceResult.ImpactPoint.Z - HeadLocation.Z };
 
-	if (JumpDistance > 0.0f && JumpDistance < 60.0f)
+	if (JumpDistance > -30.0f && JumpDistance < 60.0f)
 	{
 		auto StartVerticleNormal{ ForwardTraceResult.ImpactNormal };
 		auto LedgeHight{ DownwardTraceResult.ImpactPoint };
@@ -150,6 +161,7 @@ UInputComponent* UClimbingComponent::SetUpClimbingControllerForPlayer()
 
 void UClimbingComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *GetCollisionProfileName().ToString())
 	bCanTrace = true;
 }
 
@@ -200,7 +212,7 @@ void UClimbingComponent::FinishClimbUP()
 
 void UClimbingComponent::ClimbLeft()
 {
-	if (bIsHanging && Animation)
+	if (bIsHanging && bCanMoveLeft && Animation)
 	{
 		Animation->ClimbLeft();
 	}
@@ -208,8 +220,28 @@ void UClimbingComponent::ClimbLeft()
 
 void UClimbingComponent::ClimbRight()
 {
-	if (bIsHanging && Animation)
+	if (bIsHanging && bCanMoveRight && Animation)
 	{
 		Animation->ClimbRight();
 	}
+}
+
+void UClimbingComponent::OnOverlapBeginLeft(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	bCanMoveLeft = true;
+}
+
+void UClimbingComponent::OnOverlapBeginRight(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	bCanMoveRight = true;
+}
+
+void UClimbingComponent::OnOverlapEndLeft(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	bCanMoveLeft = false;
+}
+
+void UClimbingComponent::OnOverlapEndRight(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	bCanMoveRight = false;
 }
