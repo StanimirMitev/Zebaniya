@@ -48,18 +48,18 @@ public:
 
 private:
 	bool ForwardSphereTrace();
-	bool TopSphereTrace();
-	//TODO Raname to somehing more sensible
-	void Rest();
+	bool DownwardSphereTrace();
+	void AttemptToGrabLedge();
 	void FinishClimbInteractions();
 	void SetUpSideClimbingMovementDetection(USphereComponent*& Sphere, FVector LocalOffset, const FName Name);
+	class UInputComponent* SetUpClimbingControllerForPlayer();
 	
 	bool bCanTrace;
 	bool bIsClimbingLedge;
 	bool bIsHanging;
 	bool bCanMoveLeft;
 	bool bCanMoveRight;
-	class UInputComponent* SetUpClimbingControllerForPlayer();
+	FVector DownwardTraceOffset;
 	FHitResult ForwardTraceResult;
 	FHitResult DownwardTraceResult;
 	AActor* LetGoOfActor;
@@ -70,11 +70,11 @@ private:
 	USphereComponent* RightSphere;
 
 	UPROPERTY(EditAnywhere)
-	float ForwardTraceDistance = 100.0f;
+	float ForwardTraceDistance = 40;
 	UPROPERTY(EditAnywhere)
 	float SphereTraceRadius = 30.0f;
 	UPROPERTY(EditAnywhere)
-	float HeightTrace = 200.0f;
+	float HeightTrace = 100.0f;
 	UPROPERTY(EditAnywhere)
 	float HeightOffset = 100.0f;
 	UPROPERTY(EditAnywhere)

@@ -47,6 +47,8 @@ void UClimbingComponent::BeginPlay()
 		LeftSphere->OnComponentEndOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapEndLeft);
 		RightSphere->OnComponentBeginOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapBeginRight);
 		RightSphere->OnComponentEndOverlap.AddDynamic(this, &UClimbingComponent::OnOverlapEndRight);
+		auto DownwardTracePoint{ (Owner->GetMesh()->GetBoneLocation("head")) + (Owner->GetActorForwardVector() * ForwardTraceDistance) };
+		DownwardTraceOffset = DownwardTracePoint - Owner->GetActorLocation();
 	}
 }
 
@@ -74,13 +76,13 @@ void UClimbingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 	if (!Owner) { return; }
 	if (bCanTrace && Owner->GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Falling && (LetGoOfActor == nullptr || LetGoOfActor != ForwardTraceResult.Actor.Get()))
 	{
+		if (!DownwardSphereTrace()) {return; }
 		if (!ForwardSphereTrace()) { return; }
-		if (!TopSphereTrace()) {return; }
-		Rest();
+		AttemptToGrabLedge();
 	}
 }
 
-void UClimbingComponent::Rest()
+void UClimbingComponent::AttemptToGrabLedge()
 {
 	auto HeadLocation{ Owner->GetMesh()->GetBoneLocation("head") };
 	auto JumpDistance{ DownwardTraceResult.ImpactPoint.Z - HeadLocation.Z };
@@ -105,10 +107,10 @@ void UClimbingComponent::Rest()
 		Rotation.Pitch = 0;
 		UKismetSystemLibrary::MoveComponentTo(
 			Owner->GetCapsuleComponent(),
-			FVector{
-				ForwardTraceResult.ImpactPoint.X + (ForwardTraceResult.ImpactNormal.X * (Owner->GetCapsuleComponent()->GetScaledCapsuleRadius())),
-				ForwardTraceResult.ImpactPoint.Y + (ForwardTraceResult.ImpactNormal.Y * (Owner->GetCapsuleComponent()->GetScaledCapsuleRadius())),
-				(DownwardTraceResult.ImpactPoint.Z - HeightOffset) },
+				FVector{
+					ForwardTraceResult.ImpactPoint.X + (ForwardTraceResult.ImpactNormal.X * (Owner->GetCapsuleComponent()->GetScaledCapsuleRadius())),
+					ForwardTraceResult.ImpactPoint.Y + (ForwardTraceResult.ImpactNormal.Y * (Owner->GetCapsuleComponent()->GetScaledCapsuleRadius())),
+					(DownwardTraceResult.ImpactPoint.Z - HeightOffset) },
 				Rotation,
 				false,
 				false,
@@ -119,30 +121,38 @@ void UClimbingComponent::Rest()
 	}
 }
 
-void UClimbingComponent::FinishClimbInteractions()
-{
-	if (!Owner) { return; }
-	Animation->GrabLedge(false);
-	bIsHanging = false;
-	bIsClimbingLedge = false;
-	if (ClimbingInputController) {
-		ClimbingInputController->bBlockInput = false;
-	}
-}
 
-bool UClimbingComponent::TopSphereTrace() {
-	auto StartVerticle{ ForwardTraceResult.ImpactPoint };
-	StartVerticle.Z += HeightTrace;
-	//downwards trace
-	return UKismetSystemLibrary::SphereTraceSingle(GetOwner(), StartVerticle, ForwardTraceResult.ImpactPoint, SphereTraceRadius, ETraceTypeQuery::TraceTypeQuery16, true, TArray<AActor*>{}, EDrawDebugTrace::ForOneFrame, DownwardTraceResult, true);
+bool UClimbingComponent::DownwardSphereTrace() {
+	auto StartPoint{ Owner->GetActorLocation() + Owner->GetActorRotation().RotateVector(DownwardTraceOffset) };
+	auto EndPoint { StartPoint };
+	EndPoint.Z -= HeightTrace;
+	StartPoint.Z += HeightTrace;
+	
+	return UKismetSystemLibrary::SphereTraceSingle(
+		GetOwner(),
+		StartPoint, 
+		EndPoint,
+		SphereTraceRadius,
+		ETraceTypeQuery::TraceTypeQuery16,
+		true, TArray<AActor*>{},
+		EDrawDebugTrace::ForOneFrame,
+		DownwardTraceResult,
+		true);
 }
 
 bool UClimbingComponent::ForwardSphereTrace()
 {
-	auto Start {Owner->GetActorLocation()};
-	auto End{ (Owner->GetActorForwardVector()) * ForwardTraceDistance + Start};
-
-	return UKismetSystemLibrary::SphereTraceSingle(GetOwner(), Start, End, SphereTraceRadius, ETraceTypeQuery::TraceTypeQuery16, true, TArray<AActor*>{}, EDrawDebugTrace::ForOneFrame, ForwardTraceResult, true);	
+	return UKismetSystemLibrary::SphereTraceSingle(
+		GetOwner(),
+		FVector{ DownwardTraceResult.ImpactPoint - (Owner->GetActorForwardVector() * ForwardTraceDistance) }, //start point
+		DownwardTraceResult.ImpactPoint, //end point
+		SphereTraceRadius,
+		ETraceTypeQuery::TraceTypeQuery16,
+		true,
+		TArray<AActor*>{},
+		EDrawDebugTrace::ForOneFrame,
+		ForwardTraceResult,
+		true);	
 }
 
 UInputComponent* UClimbingComponent::SetUpClimbingControllerForPlayer()
@@ -159,19 +169,15 @@ UInputComponent* UClimbingComponent::SetUpClimbingControllerForPlayer()
 	
 }
 
-void UClimbingComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void UClimbingComponent::FinishClimbInteractions()
 {
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *GetCollisionProfileName().ToString())
-	bCanTrace = true;
-}
-
-void UClimbingComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
+	if (!Owner) { return; }
+	Animation->GrabLedge(false);
+	bIsHanging = false;
 	bIsClimbingLedge = false;
-	bCanTrace = false;
-	ForwardTraceResult = FHitResult{};
-	DownwardTraceResult = FHitResult{};
-	LetGoOfActor = nullptr; 
+	if (ClimbingInputController) {
+		ClimbingInputController->bBlockInput = false;
+	}
 }
 
 void UClimbingComponent::LetGoOfLedge()
@@ -224,6 +230,20 @@ void UClimbingComponent::ClimbRight()
 	{
 		Animation->ClimbRight();
 	}
+}
+
+void UClimbingComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	bCanTrace = true;
+}
+
+void UClimbingComponent::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	bIsClimbingLedge = false;
+	bCanTrace = false;
+	ForwardTraceResult = FHitResult{};
+	DownwardTraceResult = FHitResult{};
+	LetGoOfActor = nullptr; 
 }
 
 void UClimbingComponent::OnOverlapBeginLeft(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
