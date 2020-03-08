@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Public/ClimbingComponent.h"
 #include "ZebaniyaCharacter.generated.h"
 
 UCLASS(config=Game)
@@ -18,6 +19,9 @@ class AZebaniyaCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Climbing, meta = (AllowPrivateAccess = "true"))
+	UClimbingComponent* ClimbSphereTracer;
 public:
 	AZebaniyaCharacter();
 

@@ -16,7 +16,6 @@ AZebaniyaCharacter::AZebaniyaCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
@@ -45,6 +44,10 @@ AZebaniyaCharacter::AZebaniyaCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
+
+	ClimbSphereTracer = CreateDefaultSubobject<UClimbingComponent>(TEXT("ClimbTracer"));
+	ClimbSphereTracer->SetupAttachment(RootComponent);
+	ClimbSphereTracer->SetSphereRadius(100.0f, false);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -54,6 +57,7 @@ void AZebaniyaCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
+	PlayerInputComponent->Priority = 5;
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
@@ -74,8 +78,8 @@ void AZebaniyaCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AZebaniyaCharacter::OnResetVR);
-}
 
+}
 
 void AZebaniyaCharacter::OnResetVR()
 {
